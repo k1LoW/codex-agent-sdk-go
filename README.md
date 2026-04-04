@@ -1,17 +1,16 @@
 # codex-agent-sdk-go
 
-An unofficial Go SDK for [OpenAI Codex](https://github.com/openai/codex).
+[![Go Reference](https://pkg.go.dev/badge/github.com/k1LoW/codex-agent-sdk-go.svg)](https://pkg.go.dev/github.com/k1LoW/codex-agent-sdk-go) ![Coverage](https://raw.githubusercontent.com/k1LoW/octocovs/main/badges/k1LoW/codex-agent-sdk-go/coverage.svg) ![Code to Test Ratio](https://raw.githubusercontent.com/k1LoW/octocovs/main/badges/k1LoW/codex-agent-sdk-go/ratio.svg) ![Test Execution Time](https://raw.githubusercontent.com/k1LoW/octocovs/main/badges/k1LoW/codex-agent-sdk-go/time.svg)
 
-It communicates with the Codex app-server via a subprocess (`codex app-server --listen stdio://`), supporting both one-shot queries and interactive bidirectional sessions with tool approval callbacks.
+`codex-agent-sdk-go` is an **unofficial** Go SDK for [OpenAI Codex](https://github.com/openai/codex).
 
-## Requirements
+It communicates with the Codex app-server via a subprocess, supporting both one-shot queries and interactive bidirectional sessions.
 
-- Go 1.25+
-- [Codex CLI](https://github.com/openai/codex) installed (`npm install -g @openai/codex`)
+## Usage
 
-## Quick Start
+### Simple query
 
-```go
+``` go
 package main
 
 import (
@@ -37,25 +36,36 @@ func main() {
 }
 ```
 
-## Interactive Client
+### With options
 
-```go
-client := codex.NewClient(
-	codex.WithOnCommandApproval(func(_ context.Context, req codex.CommandApprovalRequest) (codex.ApprovalDecision, error) {
-		fmt.Printf("Approve command: %s? ", req.Command)
-		return codex.DecisionAccept, nil
-	}),
-)
+``` go
+for evt, err := range codex.Query(ctx, "Hello",
+	codex.WithThreadOptions(
+		codex.WithModel("o3"),
+		codex.WithApprovalPolicy("full-auto"),
+	),
+	codex.WithTurnOptions(
+		codex.WithEffort("high"),
+	),
+) {
+	// ...
+}
+```
 
+### Interactive client
+
+``` go
+client := codex.NewClient()
 if err := client.Connect(ctx); err != nil {
 	log.Fatal(err)
 }
 defer client.Close()
 
+// First turn
 thread, _ := client.StartThread(ctx, codex.WithModel("o3"))
 
 for evt, err := range client.StartTurn(ctx, thread.ID,
-	[]codex.UserInput{codex.TextInput("Hello")}) {
+	[]codex.UserInput{codex.TextInput("What is the capital of France?")}) {
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -66,7 +76,65 @@ for evt, err := range client.StartTurn(ctx, thread.ID,
 		fmt.Println()
 	}
 }
+
+// Follow-up turn
+for evt, err := range client.StartTurn(ctx, thread.ID,
+	[]codex.UserInput{codex.TextInput("And Germany?")}) {
+	// ...
+}
 ```
+
+### Command approval
+
+``` go
+client := codex.NewClient(
+	codex.WithOnCommandApproval(func(_ context.Context, req codex.CommandApprovalRequest) (codex.ApprovalDecision, error) {
+		fmt.Printf("Approve command: %s? ", req.Command)
+		return codex.DecisionAccept, nil
+	}),
+	codex.WithOnFileChangeApproval(func(_ context.Context, req codex.FileChangeApprovalRequest) (codex.ApprovalDecision, error) {
+		return codex.DecisionAccept, nil
+	}),
+)
+```
+
+### User input
+
+``` go
+client := codex.NewClient(
+	codex.WithOnUserInput(func(_ context.Context, req codex.UserInputRequest) (map[string]string, error) {
+		answers := make(map[string]string)
+		for _, q := range req.Questions {
+			id, _ := q["id"].(string)
+			text, _ := q["text"].(string)
+			fmt.Printf("%s: ", text)
+			var answer string
+			fmt.Scanln(&answer)
+			answers[id] = answer
+		}
+		return answers, nil
+	}),
+)
+```
+
+### MCP elicitation
+
+``` go
+client := codex.NewClient(
+	codex.WithOnElicitation(func(_ context.Context, req codex.ElicitationRequest) (codex.ElicitationResponse, error) {
+		fmt.Printf("MCP server %s is requesting input\n", req.ServerName)
+		return codex.ElicitationResponse{
+			Action:   codex.ElicitationAccept,
+			Response: map[string]any{"answer": "yes"},
+		}, nil
+	}),
+)
+```
+
+## Prerequisites
+
+- Go 1.25+
+- [Codex CLI](https://github.com/openai/codex) installed and available in PATH
 
 ## References
 
