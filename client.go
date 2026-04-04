@@ -53,6 +53,9 @@ func (c *Client) Connect(ctx context.Context) error {
 
 // StartThread sends thread/start and returns the created Thread.
 func (c *Client) StartThread(ctx context.Context, opts ...ThreadOption) (*Thread, error) {
+	if c.sess == nil {
+		return nil, fmt.Errorf("client not connected")
+	}
 	threadOpts := applyThreadOptions(opts)
 	params := threadOpts.toParams()
 
@@ -86,6 +89,9 @@ func (c *Client) StartThread(ctx context.Context, opts ...ThreadOption) (*Thread
 
 // ResumeThread sends thread/resume and returns the resumed Thread.
 func (c *Client) ResumeThread(ctx context.Context, threadID string, opts ...ThreadOption) (*Thread, error) {
+	if c.sess == nil {
+		return nil, fmt.Errorf("client not connected")
+	}
 	threadOpts := applyThreadOptions(opts)
 	params := threadOpts.toParams()
 	params["threadId"] = threadID
@@ -112,6 +118,10 @@ func (c *Client) ResumeThread(ctx context.Context, threadID string, opts ...Thre
 // The iterator completes when a TurnCompletedEvent is received or the session ends.
 func (c *Client) StartTurn(ctx context.Context, threadID string, input []UserInput, opts ...TurnOption) iter.Seq2[Event, error] {
 	return func(yield func(Event, error) bool) {
+		if c.sess == nil {
+			yield(nil, fmt.Errorf("client not connected"))
+			return
+		}
 		turnOpts := applyTurnOptions(opts)
 		params := buildTurnStartParams(threadID, input, turnOpts)
 
@@ -146,6 +156,9 @@ func (c *Client) StartTurn(ctx context.Context, threadID string, input []UserInp
 
 // Interrupt sends turn/interrupt to stop an active turn.
 func (c *Client) Interrupt(ctx context.Context, threadID string, turnID string) error {
+	if c.sess == nil {
+		return fmt.Errorf("client not connected")
+	}
 	_, err := c.sess.sendRequest(ctx, "turn/interrupt", map[string]any{
 		"threadId": threadID,
 		"turnId":   turnID,
