@@ -3,6 +3,7 @@ package codex
 // Options holds top-level configuration for the SDK.
 type Options struct {
 	CLIPath string
+	Config  map[string]string
 	Env     map[string]string
 	Stderr  func(string)
 
@@ -21,6 +22,11 @@ type Option func(*Options)
 // WithCLIPath sets the path to the codex binary.
 func WithCLIPath(path string) Option {
 	return func(o *Options) { o.CLIPath = path }
+}
+
+// WithConfig sets temporary Codex CLI config overrides.
+func WithConfig(config map[string]string) Option {
+	return func(o *Options) { o.Config = config }
 }
 
 // WithEnv sets environment variables for the CLI process.
