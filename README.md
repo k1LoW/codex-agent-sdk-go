@@ -40,6 +40,12 @@ func main() {
 
 ``` go
 for evt, err := range codex.Query(ctx, "Hello",
+	codex.WithOptions(
+		codex.WithConfig(map[string]string{
+			"model":           "gpt-5.4",
+			"approval_policy": "on-request",
+		}),
+	),
 	codex.WithThreadOptions(
 		codex.WithModel("o3"),
 		codex.WithApprovalPolicy("full-auto"),

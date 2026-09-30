@@ -9,6 +9,7 @@ import (
 	"os/exec"
 	"path/filepath"
 	"runtime"
+	"sort"
 	"strings"
 	"sync"
 	"time"
@@ -210,5 +211,19 @@ func (t *subprocessTransport) findCLI() (string, error) {
 }
 
 func (t *subprocessTransport) buildArgs() []string {
-	return []string{"app-server", "--listen", "stdio://"}
+	args := []string{"app-server", "--listen", "stdio://"}
+	if len(t.options.Config) == 0 {
+		return args
+	}
+
+	keys := make([]string, 0, len(t.options.Config))
+	for key := range t.options.Config {
+		keys = append(keys, key)
+	}
+	sort.Strings(keys)
+
+	for _, key := range keys {
+		args = append(args, "-c", key+"="+t.options.Config[key])
+	}
+	return args
 }
