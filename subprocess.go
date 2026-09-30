@@ -103,8 +103,7 @@ func (t *subprocessTransport) ReadMessage() (map[string]any, error) {
 	if err := t.decoder.Decode(&msg); err != nil {
 		if errors.Is(err, io.EOF) {
 			if waitErr := t.waitProcess(); waitErr != nil {
-				var exitErr *exec.ExitError
-				if errors.As(waitErr, &exitErr) {
+				if exitErr, ok := errors.AsType[*exec.ExitError](waitErr); ok {
 					return nil, &ProcessError{
 						SDKError: SDKError{Message: "CLI process failed"},
 						ExitCode: exitErr.ExitCode(),
